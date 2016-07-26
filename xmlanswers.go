@@ -1,6 +1,9 @@
 package xmlanswers
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"fmt"
+)
 
 // SecretResponce struct for the  request containing the secerts, I'll collapse this in to one later
 type SecretResponce struct {
@@ -12,9 +15,12 @@ type SecretResponce struct {
 				Token   string `xml:"Token"`
 				XMLName xml.Name
 				DD      struct {
-					Name  []string `xml:"Name"`
+					Name []string `xml:"Name"`
+
 					Items struct {
-						SID struct {
+						SecretName []string `xml:"SecretName"`
+						SecretID   []string `xml:"SecretId"`
+						SID        struct {
 							Svalue []string `xml:"Value"`
 						} `xml:",any"`
 					} `xml:",any"`
@@ -24,11 +30,22 @@ type SecretResponce struct {
 	} `xml:",any"`
 }
 
+// UnwindSearch to parse the xml answer for a searchterm
+func UnwindSearch(data []byte) ([]string, []string) {
+	//search := make(map[int]string)
+	m := &SecretResponce{}
+	xml.Unmarshal(data, m)
+	secretName := m.AA.BB.CC.DD.Items.SecretName
+	secretID := m.AA.BB.CC.DD.Items.SecretID
+	return secretName, secretID
+}
+
 // UnwindSecret to pull out relavent data from the return token
 func UnwindSecret(data []byte) []string {
 	m := &SecretResponce{}
 	xml.Unmarshal(data, m)
-	a := m.AA.BB.CC.DD.Items.SID.Svalue
+	a := m.AA.BB.CC.DD.Items.SID.Svalue //Items.SID.Svalue
+	fmt.Printf("%s", a)
 	return a
 
 }
@@ -87,4 +104,21 @@ func WindToken(token string, secretid string) string {
 </soap12:Envelope>`
 
 	return tokenPayLoad
+}
+
+// WindSearch will spool up the XML request for a search to be passed to authenticateToken
+func WindSearch(token string, searchTerm string) string {
+	searchPayload := `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <SearchSecrets xmlns="urn:thesecretserver.com">
+      <token>` + token + `</token>
+      <searchTerm>` + searchTerm + `</searchTerm>
+      <includeDeleted>0</includeDeleted>
+      <includeRestricted>1</includeRestricted>
+    </SearchSecrets>
+  </soap12:Body>
+</soap12:Envelope>`
+
+	return searchPayload
 }
